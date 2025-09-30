@@ -43,5 +43,8 @@ Route::get('/products/search/{name}', [ProductController::class, 'search']);
 Route::post('/order', [PurchaseController::class,'store'])->middleware(('auth:sanctum'));
 Route::get('/allorder', [PurchaseController::class,'allOrders'])->middleware(('auth:sanctum'));
 Route::get('/todayorder', [PurchaseController::class,'todaysOrders'])->middleware(('auth:sanctum'));
+Route::get('/orders/month/{month}/{year?}', [PurchaseController::class, 'ordersByMonth']);
 
-Route::get('/orders/month/{month}', [PurchaseController::class, 'ordersByMonth']);
+
+// Admin actions
+Route::put('/sales-reps/{id}', [AuthController::class, 'updateSalesRep'])->middleware('auth:sanctum');

@@ -10,48 +10,34 @@ class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        // Load credentials from services config
-        $adminUsername   = config('services.admin.username');
-        $adminPassword   = config('services.admin.password');
+        $adminUsername = config('services.admin.username');
+        $adminPassword = config('services.admin.password');
 
-        $salesRepUsername = config('services.sales_rep.username');
-        $salesRepPassword = config('services.sales_rep.password');
-
-        // Check if user is admin
         if ($request->username === $adminUsername && $request->password === $adminPassword) {
             $role = 'admin';
             $name = 'Administrator';
             $email = 'admin@gmail.com';
             $username = $adminUsername;
             $password = $adminPassword;
-        }
-        // Check if user is sales_rep
-        elseif ($request->username === $salesRepUsername && $request->password === $salesRepPassword) {
-            $role = 'sales_rep';
-            $name = 'Sales Representative';
-            $email = 'salesrep@gmail.com';
-            $username = $salesRepUsername;
-            $password = $salesRepPassword;
-        }
-        else {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+
+            $user = User::firstOrCreate(
+                ['username' => $username],
+                [
+                    'name'     => $name,
+                    'role'     => $role,
+                    'email'    => $email,
+                    'password' => Hash::make($password),
+                ]
+            );
+        } else {
+            $user = User::where('username', $request->username)->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json(['message' => 'Invalid credentials'], 401);
+            }
         }
 
-        // Check if user already exists in DB
-        $user = User::where('username', $username)->first();
-
-        if (!$user) {
-            $user = User::create([
-                'username' => $username,
-                'name'     => $name,
-                'role'     => $role,
-                'email'    => $email,
-                'password' => Hash::make($password),
-            ]);
-        }
-
-        // Generate token
-        $token = $user->createToken($role . '-token')->plainTextToken;
+        $token = $user->createToken($user->role . '-token')->plainTextToken;
 
         return response()->json([
             'message' => 'Login successful',
@@ -59,4 +45,36 @@ class AuthController extends Controller
             'token'   => $token,
         ]);
     }
+
+    public function updateSalesRep(Request $request, $id)
+    {
+        if ($request->user()->role !== 'admin') {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        $validated = $request->validate([
+            'username' => 'sometimes|string|unique:users,username,' . $id,
+            'email'    => 'sometimes|email|unique:users,email,' . $id,
+            'password' => 'sometimes|string|min:6',
+        ]);
+
+        $salesRep = User::where('id', $id)->where('role', 'sales_rep')->first();
+
+        if (!$salesRep) {
+            return response()->json(['message' => 'Sales rep not found'], 404);
+        }
+
+        if (isset($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
+        }
+
+        $salesRep->update($validated);
+
+        return response()->json([
+            'message' => 'Sales rep updated successfully',
+            'sales_rep' => $salesRep,
+        ]);
+    }
+
+
 }

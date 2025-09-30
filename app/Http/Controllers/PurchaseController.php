@@ -150,58 +150,59 @@ class PurchaseController extends Controller
         ]);
     }
 
-    public function ordersByMonth(Request $request, $month)
-    {
-        // Ensure month is valid (1–12)
-        if ($month < 1 || $month > 12) {
-            return response()->json([
-                'message' => 'Invalid month. Please provide a value between 1 and 12.'
-            ], 400);
-        }
+    public function ordersByMonth(Request $request, $month, $year = null)
+{
+    // Ensure month is valid (1–12)
+    if ($month < 1 || $month > 12) {
+        return response()->json([
+            'message' => 'Invalid month. Please provide a value between 1 and 12.'
+        ], 400);
+    }
 
-        $year = Carbon::now()->year; // current year (you can also pass year as param if needed)
+    // If no year is passed, use current year
+    $year = $year ?? Carbon::now()->year;
 
-        // Fetch all orders in given month
-        $orders = Order::whereYear('created_at', $year)
-            ->whereMonth('created_at', $month)
-            ->orderBy('created_at', 'desc')
-            ->get();
+    // Fetch all orders in given month + year
+    $orders = Order::whereYear('created_at', $year)
+        ->whereMonth('created_at', $month)
+        ->orderBy('created_at', 'desc')
+        ->get();
 
-        $totalProductCount = 0;
-        $totalAmountMade = 0;
+    $totalProductCount = 0;
+    $totalAmountMade   = 0;
 
-        $data = $orders->map(function ($order) use (&$totalProductCount, &$totalAmountMade) {
-            $items = OrderItem::where('order_id', $order->order_id)->get();
+    $data = $orders->map(function ($order) use (&$totalProductCount, &$totalAmountMade) {
+        $items = OrderItem::where('order_id', $order->order_id)->get();
 
-            $formattedItems = $items->map(function ($item) use (&$totalProductCount) {
-                $totalProductCount += $item->quantity;
-
-                return [
-                    'product_name' => $item->product_name,
-                    'item_price'   => $item->item_price,
-                    'quantity'     => $item->quantity,
-                ];
-            });
-
-            $totalAmountMade += $order->total_amount;
+        $formattedItems = $items->map(function ($item) use (&$totalProductCount) {
+            $totalProductCount += $item->quantity;
 
             return [
-                'order_id'     => $order->order_id,
-                'total_amount' => $order->total_amount,
-                'created_at'   => $order->created_at->toDateTimeString(),
-                'items'        => $formattedItems,
+                'product_name' => $item->product_name,
+                'item_price'   => $item->item_price,
+                'quantity'     => $item->quantity,
             ];
         });
 
-        return response()->json([
-            'message'         => 'Orders fetched successfully',
-            'month'           => Carbon::create()->month($month)->format('F'), // e.g. April
-            'year'            => $year,
-            'total_order'     => $totalProductCount,
-            'total_amount'    => $totalAmountMade,
-            'orders'          => $data,
-        ]);
-    }
+        $totalAmountMade += $order->total_amount;
+
+        return [
+            'order_id'     => $order->order_id,
+            'total_amount' => $order->total_amount,
+            'created_at'   => $order->created_at->toDateTimeString(),
+            'items'        => $formattedItems,
+        ];
+    });
+
+    return response()->json([
+        'message'      => 'Orders fetched successfully',
+        'month'        => Carbon::create()->month($month)->format('F'), // e.g. April
+        'year'         => $year,
+        'total_order'  => $totalProductCount,
+        'total_amount' => $totalAmountMade,
+        'orders'       => $data,
+    ]);
+}
 
 
 }

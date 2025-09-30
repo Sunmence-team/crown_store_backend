@@ -35,9 +35,9 @@ return [
         'password' => env('ADMIN_PASSWORD'),
     ],
 
-    'sales_rep' => [
-        'username' => env('SALESREP_USERNAME'),
-        'password' => env('SALESREP_PASSWORD'),
-    ],
+    // 'sales_rep' => [
+    //     'username' => env('SALESREP_USERNAME'),
+    //     'password' => env('SALESREP_PASSWORD'),
+    // ],
 
 ];
