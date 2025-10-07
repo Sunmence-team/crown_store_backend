@@ -95,7 +95,11 @@ class ProductController extends Controller
                 'message' => 'Product not found'
             ], 404);
         }
-
+        
+        if ($request->has('in_stock')) {
+            $validated['in_stock'] = $product->in_stock + $request->input('in_stock');
+        }
+        
         $product->update($validated);
 
         return response()->json([

@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            $table->string('order_id')->unique(); // e.g., ORD-001
+            $table->string('order_id')->unique(); 
+            $table->string('issued_by')->nullable(); 
             $table->decimal('total_amount', 10, 2);
             $table->timestamps();
         });

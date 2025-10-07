@@ -12,70 +12,82 @@ use Illuminate\Support\Str;
 
 class PurchaseController extends Controller
 {
-    public function store(Request $request)
-    {
-        $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-        ]);
+   public function store(Request $request)
+{
+    $request->validate([
+        'items' => 'required|array|min:1',
+        'items.*.product_id' => 'required|exists:products,id',
+        'items.*.quantity' => 'required|integer|min:1',
+        'issued_by' => 'required|string|exists:users,username', 
+    ]);
+
+    // Generate a unique order ID
+    do {
         $randomNumber = rand(0, 999);
         $orderId = 'ORD-' . str_pad($randomNumber, 3, '0', STR_PAD_LEFT);
-        $total = 0;
-        $orderItemsData = [];
+        $exists = Order::where('order_id', $orderId)->exists();
+    } while ($exists);
 
-        foreach ($request->items as $item) {
-            $product = Products::find($item['product_id']);
-            $quantity = $item['quantity'];
-            $price = $product->price;
-            $subtotal = $price * $quantity;
+    $total = 0;
+    $orderItemsData = [];
 
-            $availableStock = $product->in_stock - $product->total_sold;
-            if ($quantity > $availableStock) {
-                return response()->json([
-                    'message' => "Not enough stock for product: {$product->items}",
-                    'available_stock' => $availableStock
-                ], 400);
-            }
+    foreach ($request->items as $item) {
+        $product = Products::find($item['product_id']);
+        $quantity = $item['quantity'];
+        $price = $product->price;
+        $subtotal = $price * $quantity;
 
-            $product->total_sold += $quantity;
-            $product->save();
-            
-            $orderItemsData[] = [
-                'order_id' => $orderId,
-                'product_id' => $product->id,
-                'product_name' => $product->items,
-                'item_price' => $price,
-                'quantity' => $quantity,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-
-            $total += $subtotal;
+        $availableStock = $product->in_stock - $product->total_sold;
+        if ($quantity > $availableStock) {
+            return response()->json([
+                'message' => "Not enough stock for product: {$product->items}",
+                'available_stock' => $availableStock
+            ], 400);
         }
 
-        Order::create([
+        $product->total_sold += $quantity;
+        $product->save();
+
+        $orderItemsData[] = [
             'order_id' => $orderId,
-            'total_amount' => $total
-        ]);
+            'product_id' => $product->id,
+            'product_name' => $product->items,
+            'item_price' => $price,
+            'quantity' => $quantity,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
 
-        OrderItem::insert($orderItemsData);
-
-        $responseItems = collect($orderItemsData)->map(function ($item) {
-            return [
-                'product_name' => $item['product_name'],
-                'quantity' => $item['quantity'],
-                'item_price' => $item['item_price']
-            ];
-        });
-
-        return response()->json([
-            'message' => 'Order placed successfully',
-            'order_id' => $orderId,
-            'items' => $responseItems,
-            'total' => $total
-        ]);
+        $total += $subtotal;
     }
+
+    // ✅ Save order with issued_by
+    Order::create([
+        'order_id' => $orderId,
+        'total_amount' => $total,
+        'issued_by' => $request->issued_by,  // 👈 save issued_by here
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    OrderItem::insert($orderItemsData);
+
+    $responseItems = collect($orderItemsData)->map(function ($item) {
+        return [
+            'product_name' => $item['product_name'],
+            'quantity' => $item['quantity'],
+            'item_price' => $item['item_price']
+        ];
+    });
+
+    return response()->json([
+        'message' => 'Order placed successfully',
+        'order_id' => $orderId,
+        'items' => $responseItems,
+        'total' => $total
+    ]);
+}
+
 
     public function allOrders(Request $request)
     {
@@ -87,6 +99,7 @@ class PurchaseController extends Controller
             return [
                 'order_id' => $order->order_id,
                 'total_amount' => $order->total_amount,
+                'issued_by'   => $order->issued_by,
                 'created_at' => $order->created_at->toDateTimeString(),
                 'items' => $items->map(function ($item) {
                     return [
@@ -189,6 +202,7 @@ class PurchaseController extends Controller
         return [
             'order_id'     => $order->order_id,
             'total_amount' => $order->total_amount,
+            'issued_by'   => $order->issued_by,
             'created_at'   => $order->created_at->toDateTimeString(),
             'items'        => $formattedItems,
         ];

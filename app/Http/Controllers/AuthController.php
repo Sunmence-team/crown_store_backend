@@ -54,7 +54,7 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'username' => 'sometimes|string|unique:users,username,' . $id,
-            'email'    => 'sometimes|email|unique:users,email,' . $id,
+            // 'email'    => 'sometimes|email|unique:users,email,' . $id,
             'password' => 'sometimes|string|min:6',
         ]);
 
@@ -76,5 +76,15 @@ class AuthController extends Controller
         ]);
     }
 
+    
+     public function getSalesReps()
+    {
+        // Fetch all users with role = sales_rep
+        $salesReps = User::where('role', 'sales_rep')->get();
 
+        return response()->json([
+            'message' => 'Sales reps fetched successfully',
+            'data' => $salesReps
+        ], 200);
+    }
 }

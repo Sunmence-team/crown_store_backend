@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     use HasFactory;
-       protected $fillable = ['order_id', 'total_amount'];
+       protected $fillable = ['order_id', 'total_amount','issued_by'];
     public $incrementing = true;
     public static function generateOrderId()
 {

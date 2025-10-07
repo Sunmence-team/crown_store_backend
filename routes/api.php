@@ -48,3 +48,4 @@ Route::get('/orders/month/{month}/{year?}', [PurchaseController::class, 'ordersB
 
 // Admin actions
 Route::put('/sales-reps/{id}', [AuthController::class, 'updateSalesRep'])->middleware('auth:sanctum');
+Route::get('/users/sales-reps', [AuthController::class, 'getSalesReps']);
